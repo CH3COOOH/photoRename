@@ -8,7 +8,8 @@ if os.name == "nt":
 else:
 	PATH_EXIFTOOL = "./exiftool"
 KEY = {1: "DateTimeOriginal",
-		2: "FileModifyDate"}
+		2: "FileModifyDate",
+		3: "CreationDate"}
 
 def getImgPathList(folder_name, filter_=None):
 	if filter_ == None:
@@ -83,6 +84,7 @@ def main():
 	key = int(input('''Rename as
 1. Date/Time Original
 2. File Modify Date
+3. CreationDate (for .MOV files)
 > '''))
 	if key not in KEY.keys():
 		print("Unknown rule...")
