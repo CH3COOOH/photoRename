@@ -1,12 +1,9 @@
 import os
+import re
+from datetime import datetime
+import exifread
 from alib3 import afile
 
-
-## Please download ExifTool from https://exiftool.org/
-if os.name == "nt":
-	PATH_EXIFTOOL = "exiftool"
-else:
-	PATH_EXIFTOOL = "./exiftool"
 KEY = {1: "DateTimeOriginal",
 		2: "FileModifyDate",
 		3: "CreationDate"}
@@ -16,48 +13,60 @@ def getImgPathList(folder_name, filter_=None):
 		return afile.fileLstMaker(folder_name, deep=False)
 	return afile.fileLstMaker(folder_name, deep=False, filter_=filter_)
 
-
-def getEXIFfromImg(img_path, key):
-	p = os.popen("%s -s -FileTypeExtension -%s \"%s\"" % (PATH_EXIFTOOL, key, img_path))
-	raw_exif = p.read()
-	p.close()
-	return raw_exif
-
-
-def getSpecificEXIFfromEXIF(raw_exif):
-	try:
-		extension, specific_exif = raw_exif.split("\n")[:-1]
-		extension = "." + extension.split(" : ")[1]
-		specific_exif = specific_exif.split(" : ")[1]
-	except:
-		return None
-	return extension, specific_exif
-
-
 def exif2FileName(date_exif):
-	## date_exif = '2020:01:23 21:36:24'
-	idx_char_plus = date_exif.find("+")
-	if idx_char_plus >= 0:
-		date_exif = date_exif[:idx_char_plus]
-	d, t = date_exif.split(" ")
-	d = d[2:].replace(":", "")
-	t = t.replace(":", "-")
-	return d + " " + t
+	"""
+	Accepts a datetime or a string like:
+	  - "2021:11:20 16:47:13"
+	  - "2021-11-20 16:47:13"
+	  - "20211120 16:47:13"
+	  - with optional timezone suffix like "+08:00"
+	Returns formatted string: "YYMMDD HH-MM-SS"
+	"""
+	if isinstance(date_exif, datetime):
+		dt = date_exif
+	else:
+		s = str(date_exif).strip()
+		# remove timezone like +08:00, +0800 or trailing 'Z'
+		s = re.sub(r'([+-]\d{2}:?\d{2})$','', s)
+		s = s.rstrip('Z').strip()
+		dt = None
+		for fmt in ("%Y:%m:%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y%m%d %H:%M:%S"):
+			try:
+				dt = datetime.strptime(s, fmt)
+				break
+			except Exception:
+				continue
+		if dt is None:
+			nums = re.findall(r'\d+', s)
+			if len(nums) >= 6:
+				try:
+					y, m, d, H, M, S = map(int, nums[:6])
+					dt = datetime(y, m, d, H, M, S)
+				except Exception:
+					dt = None
+		if dt is None:
+			return s
+	return dt.strftime("%y%m%d %H-%M-%S")
 
 
 def previewAndNewPath(img_path, key):
-	raw_exif = getEXIFfromImg(img_path, key)
-	_ = getSpecificEXIFfromEXIF(raw_exif)
+	if key == "DateTimeOriginal":
+		with open(img_path, "rb") as f:
+			tags = exifread.process_file(f, details=False)
+		specific_exif = tags.get("EXIF DateTimeOriginal")
+	elif key == "FileModifyDate":
+		specific_exif = datetime.fromtimestamp(os.path.getmtime(img_path))
+	elif key == "CreationDate":
+		specific_exif = datetime.fromtimestamp(os.path.getctime(img_path))
+
 	folder, fname = os.path.split(img_path)
 
-	if _ == None:
+	if specific_exif == None:
 		print(fname + " -> *** UNABLE TO GET EXIF INFO ***")
 		return None
-	
-	ext = _[0]
-	specific_exif = _[1]
 
-	rename = exif2FileName(specific_exif) + ext
+	ext = os.path.splitext(img_path)[1]
+	rename = exif2FileName(str(specific_exif)) + ext
 
 	print("%s -> %s" % (fname, rename))
 	new_path = os.path.join(folder, rename)
