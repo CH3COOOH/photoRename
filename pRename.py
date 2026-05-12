@@ -8,10 +8,10 @@ KEY = {1: "DateTimeOriginal",
 		2: "FileModifyDate",
 		3: "CreationDate"}
 
-def getImgPathList(folder_name, filter_=None):
-	if filter_ == None:
-		return afile.fileLstMaker(folder_name, deep=False)
-	return afile.fileLstMaker(folder_name, deep=False, filter_=filter_)
+def getImgPathList(folder_name, ext_filter=None):
+	if ext_filter == None:
+		return afile.fileLstMaker(folder_name, deep=False, include_dir=False)
+	return afile.fileLstMaker(folder_name, deep=False, ext_filter=ext_filter, include_dir=False)
 
 def exif2FileName(date_exif):
 	"""
@@ -88,8 +88,8 @@ def execRename(origin_path, new_path):
 	os.rename(origin_path, new_path_sure)
 
 def main():
-	folder = input("Folder\n> ")
-	extension = input("Extension (.jpg, .png, ...)\n> ")
+	folder = input("[Folder]\n> ")
+	extension = input("[Extension]\n<Input sample>\njpg png heic\n* (for all)\n> ")
 	key = int(input('''Rename as
 1. Date/Time Original
 2. File Modify Date
@@ -98,8 +98,11 @@ def main():
 	if key not in KEY.keys():
 		print("Unknown rule...")
 		exit(0)
-
-	img_path_list = getImgPathList(folder, [extension])
+	
+	if extension == '*':
+		img_path_list = getImgPathList(folder)
+	else:
+		img_path_list = getImgPathList(folder, list(map((lambda s: '.' + s), extension.split(' '))))
 
 	renameDict = {}
 	for i in img_path_list:
