@@ -87,7 +87,7 @@ def execRename(origin_path, new_path):
 		print("<!> %s has been renamed as %s." % (os.path.split(new_path)[1], os.path.split(new_path_sure)[1]))
 	os.rename(origin_path, new_path_sure)
 
-def main():
+def tui():
 	folder = input("[Folder]\n> ")
 	extension = input("[Extension]\n<Input sample>\njpg png heic\n* (for all)\n> ")
 	key = int(input('''Rename as
@@ -97,9 +97,9 @@ def main():
 > '''))
 	if key not in KEY.keys():
 		print("Unknown rule...")
-		exit(0)
+		return -1
 	
-	if extension == '*':
+	if extension in ['*', '']:
 		img_path_list = getImgPathList(folder)
 	else:
 		img_path_list = getImgPathList(folder, list(map((lambda s: '.' + s), extension.split(' '))))
@@ -111,10 +111,15 @@ def main():
 			continue
 		renameDict[i] = new_path
 
-	input("Press any key to rename...")
+	confirm = input("Press ENTER to rename, or input any character to cancel...")
+	if confirm != '':
+		return -1
 	for k in renameDict.keys():
 		execRename(k, renameDict[k])
-	input("Press any key to exit...")
+	input("Finished. Press ENTER to start a new session...")
+	return 0
 
 if __name__ == '__main__':
-	main()
+	while True:
+		tui()
+		print('\nNew session started.')
